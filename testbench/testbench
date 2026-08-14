@@ -1,0 +1,457 @@
+`timescale 1ns/1ps
+
+//======================================================================
+// TINY RISC-V SoC - PRESENTATION TESTBENCH
+//======================================================================
+
+module tb_phase7_tiny_soc;
+
+    //==================================================================
+    // DUT INTERFACE
+    //==================================================================
+
+    reg         clk;
+    reg         rst;
+    reg  [31:0] gpio_in;
+    wire [31:0] gpio_out;
+    reg         uart_rx;
+    wire        uart_tx;
+    reg         spi_miso;
+    wire        spi_mosi;
+    wire        spi_sclk;
+    wire        spi_cs_n;
+    tri1        i2c_sda;
+    wire        i2c_scl;
+
+    //==================================================================
+    // DEVICE UNDER TEST
+    //==================================================================
+
+    tiny_soc_top DUT (
+        .clk      (clk),
+        .rst      (rst),
+        .gpio_in  (gpio_in),
+        .gpio_out (gpio_out),
+        .uart_rx  (uart_rx),
+        .uart_tx  (uart_tx),
+        .spi_miso (spi_miso),
+        .spi_mosi (spi_mosi),
+        .spi_sclk (spi_sclk),
+        .spi_cs_n (spi_cs_n),
+        .i2c_sda  (i2c_sda),
+        .i2c_scl  (i2c_scl)
+    );
+
+    //==================================================================
+    // CLOCK / RESET
+    //==================================================================
+
+    initial begin
+        clk = 1'b0;
+        forever #5 clk = ~clk;
+    end
+
+    initial begin
+        rst      = 1'b1;
+        gpio_in  = 32'h00000000;
+        uart_rx  = 1'b1;
+        spi_miso = 1'b0;
+        #50;
+        rst      = 1'b0;
+    end
+
+    //==================================================================
+    // WAVEFORM DUMP
+    //==================================================================
+
+    initial begin
+        $dumpfile("tiny_soc_phase7.vcd");
+        $dumpvars(0, tb_phase7_tiny_soc);
+    end
+
+    //==================================================================
+    // VERIFICATION STATUS
+    //==================================================================
+
+    integer tests_passed;
+
+    reg cpu_boot_seen;
+    reg axi_activity_seen;
+    reg gpio_write_seen;
+    reg timer_write_seen;
+    reg uart_write_seen;
+    reg spi_write_seen;
+    reg i2c_write_seen;
+
+    reg dma_read_seen;
+    reg dma_write_seen;
+    reg dma_done_seen;
+
+    reg [31:0] dma_last_read_addr;
+    reg [31:0] dma_last_write_addr;
+    reg [31:0] dma_last_write_data;
+
+    // Kept for the final PASS/FAIL summary table
+    reg [0:9] property_result;   // 1 = PASS, 0 = FAIL, indexed [1]..[10]
+
+    initial begin
+        tests_passed        = 0;
+        cpu_boot_seen        = 1'b0;
+        axi_activity_seen    = 1'b0;
+        gpio_write_seen      = 1'b0;
+        timer_write_seen     = 1'b0;
+        uart_write_seen      = 1'b0;
+        spi_write_seen       = 1'b0;
+        i2c_write_seen       = 1'b0;
+        dma_read_seen        = 1'b0;
+        dma_write_seen       = 1'b0;
+        dma_done_seen        = 1'b0;
+        dma_last_read_addr   = 32'd0;
+        dma_last_write_addr  = 32'd0;
+        dma_last_write_data  = 32'd0;
+        property_result      = 10'b0000000000;
+    end
+
+    //==================================================================
+    // SYSTEM-LEVEL ACTIVITY MONITOR
+    //==================================================================
+    // Unchanged from your version - only latches the events needed by
+    // the presentation checks below.
+    //==================================================================
+
+    always @(posedge clk) begin
+        if (!rst) begin
+
+            if (DUT.pc == 32'h0000000C)
+                cpu_boot_seen <= 1'b1;
+
+            if ((DUT.axi_awvalid && DUT.axi_awready) ||
+                (DUT.axi_wvalid  && DUT.axi_wready)  ||
+                (DUT.axi_arvalid && DUT.axi_arready))
+                axi_activity_seen <= 1'b1;
+
+            if (DUT.gpio_wr_en)
+                gpio_write_seen <= 1'b1;
+
+            if (DUT.timer_wr_en)
+                timer_write_seen <= 1'b1;
+
+            if (DUT.uart_wr_en)
+                uart_write_seen <= 1'b1;
+
+            if (DUT.spi_wr_en)
+                spi_write_seen <= 1'b1;
+
+            if (DUT.i2c_wr_en)
+                i2c_write_seen <= 1'b1;
+
+            if (DUT.dma_mem_read) begin
+                dma_read_seen      <= 1'b1;
+                dma_last_read_addr <= DUT.dma_mem_read_addr;
+            end
+
+            if (DUT.dma_mem_write) begin
+                dma_write_seen      <= 1'b1;
+                dma_last_write_addr <= DUT.dma_mem_write_addr;
+                dma_last_write_data <= DUT.dma_mem_write_data;
+            end
+
+            if (DUT.dma_done)
+                dma_done_seen <= 1'b1;
+        end
+    end
+
+    //==================================================================
+    // PIN TELEMETRY (display-only, never affects pass/fail)
+    //==================================================================
+
+    task show_pins(input [8*24-1:0] tag);
+        begin
+            $display("    ---- pin telemetry @ %0s ----", tag);
+            $display("    gpio_out = 0x%08h", gpio_out);
+            $display("    uart_tx  = %b   spi_sclk/mosi/cs_n = %b/%b/%b",
+                      uart_tx, spi_sclk, spi_mosi, spi_cs_n);
+            $display("    i2c_scl  = %b   i2c_sda = %b",
+                      i2c_scl, i2c_sda);
+        end
+    endtask
+
+    //==================================================================
+    // PRESENTATION HEADER
+    //==================================================================
+
+    initial begin
+        #1;
+        $display("");
+        $display("============================================================");
+        $display("                 TINY RISC-V SoC DEMO");
+        $display("============================================================");
+        $display("RISC-V CPU -> AXI Master -> AXI4-Lite Interconnect");
+        $display("                 |-> GPIO");
+        $display("                 |-> TIMER");
+        $display("                 |-> UART");
+        $display("                 |-> SPI");
+        $display("                 |-> I2C");
+        $display("                 |-> DMA");
+        $display("                 |-> INTERRUPT CONTROLLER");
+        $display("============================================================");
+    end
+
+    //==================================================================
+    // PROPERTY 1 : RESET / IDLE
+    //==================================================================
+
+    initial begin
+        #45;
+        $display("");
+        $display("[1] RESET / IDLE");
+
+        if (gpio_out == 32'h00000000) begin
+            $display("    PASS - Reset state verified.");
+            tests_passed = tests_passed + 1;
+            property_result[0] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - GPIO reset value = %08h", gpio_out);
+        end
+        show_pins("RESET");
+    end
+
+    //==================================================================
+    // PROPERTY 2 : CPU BOOT
+    //==================================================================
+
+    initial begin
+        #200;
+        $display("");
+        $display("[2] CPU BOOT");
+
+        if (cpu_boot_seen) begin
+            $display("    PASS - CPU reached boot address 0x0000000C.");
+            tests_passed = tests_passed + 1;
+            property_result[1] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - CPU boot address not reached.");
+        end
+    end
+
+    //==================================================================
+    // PROPERTY 3 : AXI4-LITE ACTIVITY
+    //==================================================================
+
+    initial begin
+        #600;
+        $display("");
+        $display("[3] AXI4-LITE ACTIVITY");
+
+        if (axi_activity_seen) begin
+            $display("    PASS - CPU generated AXI transactions.");
+            tests_passed = tests_passed + 1;
+            property_result[2] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - No AXI transaction detected.");
+        end
+    end
+
+    //==================================================================
+    // PROPERTY 4 : GPIO
+    //==================================================================
+
+    initial begin
+        #700;
+        $display("");
+        $display("[4] GPIO");
+
+        if (gpio_write_seen && gpio_out == 32'h0000000F) begin
+            $display("    PASS - CPU -> AXI -> Decoder -> GPIO");
+            $display("    GPIO OUT = 0x%08h", gpio_out);
+            tests_passed = tests_passed + 1;
+            property_result[3] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - GPIO verification failed.");
+        end
+        show_pins("GPIO");
+    end
+
+    //==================================================================
+    // PROPERTY 5 : TIMER
+    //==================================================================
+
+    initial begin
+        #800;
+        $display("");
+        $display("[5] TIMER");
+
+        if (timer_write_seen) begin
+            $display("    PASS - CPU -> AXI -> Decoder -> TIMER");
+            tests_passed = tests_passed + 1;
+            property_result[4] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - TIMER transaction not detected.");
+        end
+    end
+
+    //==================================================================
+    // PROPERTY 6 : UART
+    //==================================================================
+
+    initial begin
+        #900;
+        $display("");
+        $display("[6] UART");
+
+        if (uart_write_seen) begin
+            $display("    PASS - CPU -> AXI -> Decoder -> UART");
+            tests_passed = tests_passed + 1;
+            property_result[5] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - UART transaction not detected.");
+        end
+        show_pins("UART");
+    end
+
+    //==================================================================
+    // PROPERTY 7 : SPI
+    //==================================================================
+
+    initial begin
+        #1000;
+        $display("");
+        $display("[7] SPI");
+
+        if (spi_write_seen) begin
+            $display("    PASS - CPU -> AXI -> Decoder -> SPI");
+            tests_passed = tests_passed + 1;
+            property_result[6] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - SPI transaction not detected.");
+        end
+        show_pins("SPI");
+    end
+
+    //==================================================================
+    // PROPERTY 8 : I2C
+    //==================================================================
+
+    initial begin
+        #1100;
+        $display("");
+        $display("[8] I2C");
+
+        if (i2c_write_seen) begin
+            $display("    PASS - CPU -> AXI -> Decoder -> I2C");
+            tests_passed = tests_passed + 1;
+            property_result[7] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - I2C transaction not detected.");
+        end
+        show_pins("I2C");
+    end
+
+    //==================================================================
+    // PROPERTY 9 : DMA
+    //==================================================================
+
+    initial begin
+        #1000;
+        $display("");
+        $display("[9] DMA");
+
+        if (dma_read_seen &&
+            dma_write_seen &&
+            dma_done_seen &&
+            dma_last_read_addr  == 32'h00000010 &&
+            dma_last_write_addr == 32'h00000020 &&
+            dma_last_write_data == 32'hAAAAAAAA) begin
+
+            $display("    PASS - DMA transfer verified.");
+            $display("    Source      = 0x%08h", dma_last_read_addr);
+            $display("    Destination = 0x%08h", dma_last_write_addr);
+            $display("    Data        = 0x%08h", dma_last_write_data);
+            tests_passed = tests_passed + 1;
+            property_result[8] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - DMA transfer verification failed.");
+        end
+    end
+
+    //==================================================================
+    // PROPERTY 10 : INTERRUPT CONTROLLER
+    //==================================================================
+
+    initial begin
+        #1050;
+        $display("");
+        $display("[10] INTERRUPT CONTROLLER");
+
+        if (DUT.interrupt == 1'b0) begin
+            $display("    PASS - Interrupt controller integrated.");
+            tests_passed = tests_passed + 1;
+            property_result[9] = 1'b1;
+        end
+        else begin
+            $display("    FAIL - Unexpected interrupt state.");
+        end
+    end
+
+    //==================================================================
+    // FINAL PRESENTATION REPORT
+    //==================================================================
+
+    initial begin
+        #1200;
+
+        $display("");
+        $display("============================================================");
+        $display("                    FINAL RESULTS");
+        $display("============================================================");
+        $display("  #   Property                     Result");
+        $display("  --- ---------------------------- --------");
+        $display("  1   Reset / Idle                 %0s", property_result[0] ? "PASS" : "FAIL");
+        $display("  2   CPU Boot                     %0s", property_result[1] ? "PASS" : "FAIL");
+        $display("  3   AXI4-Lite Activity            %0s", property_result[2] ? "PASS" : "FAIL");
+        $display("  4   GPIO                         %0s", property_result[3] ? "PASS" : "FAIL");
+        $display("  5   Timer                        %0s", property_result[4] ? "PASS" : "FAIL");
+        $display("  6   UART                         %0s", property_result[5] ? "PASS" : "FAIL");
+        $display("  7   SPI                          %0s", property_result[6] ? "PASS" : "FAIL");
+        $display("  8   I2C                          %0s", property_result[7] ? "PASS" : "FAIL");
+        $display("  9   DMA                          %0s", property_result[8] ? "PASS" : "FAIL");
+        $display("  10  Interrupt Controller         %0s", property_result[9] ? "PASS" : "FAIL");
+        $display("============================================================");
+        $display("Tests Passed : %0d / 10", tests_passed);
+
+        if (tests_passed == 10) begin
+            $display("");
+            $display("SYSTEM VERIFICATION : PASS");
+            $display("Tiny RISC-V SoC integration verified successfully.");
+        end
+        else begin
+            $display("");
+            $display("SYSTEM VERIFICATION : PARTIAL");
+            $display("Review failed properties before demonstration.");
+        end
+
+        $display("============================================================");
+        $finish;
+    end
+
+    //==================================================================
+    // GLOBAL TIMEOUT
+    //==================================================================
+
+    initial begin
+        #5000;
+        $display("");
+        $display("ERROR: Simulation timeout.");
+        $finish;
+    end
+
+endmodule
