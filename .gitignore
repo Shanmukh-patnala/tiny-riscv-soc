@@ -1,0 +1,59 @@
+# Simulation / waveform outputs
+*.vcd
+*.fst
+*.lxt
+*.lxt2
+*.wlf
+*.vpd
+*.shm
+*.ucdb
+
+# Compiled simulation files
+*.o
+*.a
+*.so
+*.out
+*.exe
+*.log
+*.jou
+*.key
+
+# Verilator / Icarus / simulator generated files
+obj_dir/
+verilated_obj_dir/
+work/
+simv/
+csrc/
+*.vvp
+*.iv
+
+# Tool-generated directories
+.questa/
+.vivado/
+.xsim/
+.cache/
+.hw/
+.ip_user_files/
+.sim/
+*.wdb
+
+# Editor / OS files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Generated reports / coverage
+coverage/
+*.html
+*.xml
+
+# Keep project source, memories, diagrams, reports and testbenches tracked.
