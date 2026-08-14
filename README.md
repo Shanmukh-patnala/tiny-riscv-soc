@@ -69,10 +69,9 @@ The main system path is:
           Memory       Peripherals        System
              │             │              Control
              │       ┌─────┼─────┐        ┌──┴──┐
-             │       │     │     │        │ DMA │
-             │      GPIO Timer UART       │ IRQ │
-             │      SPI  I2C              └─────┘
-             ▼
+             │      GPIO Timer UART       │ DMA │
+             │      SPI  I2C              │ IRQ │
+             ▼                             └─────┘
            SDRAM
 ```
 
@@ -80,7 +79,7 @@ The main system path is:
 
 ## 🧩 CPU Subsystem
 
-![CPU Pipeline](diagrams/risc-v_cpu_pipeline.png)
+![RISC-V CPU Pipeline](diagrams/RISC-V%20CPU%20Pipeline.png)
 
 The CPU is a **5-stage RV32IM RISC-V processor**.
 
@@ -113,11 +112,13 @@ Final Instruction = 0x00000013
 Total Cycles      = 67
 ```
 
+![CPU Bring-Up Verification](waveforms/01_cpu_bringup_pass.png)
+
 ---
 
-## 🧠 Cache
+## 🧠 Cache and Memory System
 
-![Memory System](diagrams/memory_system.png)
+![Memory System](diagrams/Memory%20System.png)
 
 The cache subsystem uses a **2-way set-associative organization** with instruction and data cache support.
 
@@ -137,11 +138,13 @@ The cache is used to improve memory-access performance by keeping frequently acc
 
 DMA-cache integration was also functionally verified for destination data integrity.
 
+![DMA + Cache Integration](waveforms/09_dma_cache_integration.png)
+
 ---
 
 ## 🔗 AXI4-Lite Interconnect
 
-![AXI Interconnect](diagrams/axi4-lite_interconnect.png)
+![AXI4-Lite Interconnect](diagrams/AXI4-Lite%20Interconnect.png)
 
 The AXI4-Lite interconnect is the communication backbone of the SoC.
 
@@ -169,6 +172,8 @@ Read Responses     : 1
 AXI TEST : PASS
 ```
 
+![AXI4-Lite Verification](waveforms/02_axi4_lite_verification.png)
+
 ---
 
 ## 🗺️ Memory Map
@@ -186,19 +191,11 @@ AXI TEST : PASS
 
 ---
 
-## 💾 Memory System
+## 💾 SDRAM
 
-The memory subsystem contains:
+The memory subsystem contains program/instruction memory, data memory, cache, SDRAM controller and external SDRAM support.
 
-- Program/instruction memory
-- Data memory
-- Cache
-- SDRAM controller
-- External SDRAM model
-
-### SDRAM verification
-
-The SDRAM testbench verifies:
+The SDRAM verification checks:
 
 - Reset
 - Initialization
@@ -213,13 +210,13 @@ SDRAM Tests Passed : 7 / 7
 SDRAM TEST : PASS
 ```
 
+![SDRAM Verification](waveforms/11_sdram_verification.png)
+
 ---
 
 ## 🔌 Peripherals
 
-![Peripherals](waveforms/all_peripherals_verification.png)
-
-The SoC provides several memory-mapped peripherals.
+The SoC provides several memory-mapped peripherals through the AXI4-Lite interconnect.
 
 ### GPIO
 
@@ -234,13 +231,19 @@ Data    = 0x0F
 GPIO_OUT = 0x0000000F
 ```
 
+![GPIO Verification](waveforms/04_gpio_verification.png)
+
 ### Timer
 
 Provides hardware counting and timer-event generation.
 
+The timer is configured through its memory-mapped interface and can generate an interrupt event.
+
 ### UART
 
 Provides serial transmit/receive functionality through the SoC peripheral interface.
+
+![UART Verification](waveforms/05_uart_verification.png)
 
 ### SPI
 
@@ -253,6 +256,8 @@ SCLK
 CS
 ```
 
+![SPI Verification](waveforms/06_spi_verification.png)
+
 ### I²C
 
 Provides two-wire serial communication using:
@@ -262,11 +267,13 @@ SDA
 SCL
 ```
 
+![I²C Verification](waveforms/07_i2c_verification.png)
+
 ---
 
 ## 🚚 DMA Controller
 
-![DMA Controller](waveforms/08_dma_verification.png)
+![DMA + Interrupt Flow](diagrams/DMA%20%2B%20Interrupt%20Flow.png)
 
 The DMA controller allows data movement with reduced CPU involvement.
 
@@ -290,13 +297,17 @@ DMA Tests Passed : 7 / 7
 DMA TEST : PASS
 ```
 
+![DMA Verification](waveforms/08_dma_verification.png)
+
 The DMA-cache integration test also verifies transferred data at the destination.
+
+![DMA Cache Integration Verification](waveforms/09_dma_cache_integration.png)
 
 ---
 
 ## 🔔 Interrupt Controller
 
-![Interrupt Controller](waveforms/10_interrupt_controller.png)
+![DMA and Interrupt Flow](diagrams/DMA%20%2B%20Interrupt%20Flow.png)
 
 The interrupt controller manages hardware-generated interrupt requests.
 
@@ -315,9 +326,13 @@ Interrupt Controller Tests Passed : 7 / 7
 INTERRUPT CONTROLLER TEST : PASS
 ```
 
+![Interrupt Controller Verification](waveforms/10_interrupt_verification.png)
+
 ---
 
-## 🔄 SoC Operation Flow
+## 🔄 SoC Operation and System Waveform
+
+The complete SoC operation follows:
 
 ```text
 RESET
@@ -351,6 +366,10 @@ AXI4-Lite Interconnect
   └────────► Interrupt Controller
 ```
 
+![Complete SoC System Waveform](waveforms/03_soc_system_waveform.png)
+
+![Combined Peripheral Verification](waveforms/all_peripherals_verification.png)
+
 ---
 
 ## 📂 Project Structure
@@ -359,14 +378,11 @@ AXI4-Lite Interconnect
 Tiny-RISC-V-SoC/
 │
 ├── diagrams/
-│   ├── soc_architecture.png
-│   ├── cpu_pipeline.png
-│   ├── memory_system.png
-│   ├── axi_interconnect.png
-│   ├── peripherals.png
-│   ├── dma.png
-│   ├── interrupt_controller.png
-│   └── memory_map.png
+│   ├── AXI4-Lite Interconnect.png
+│   ├── DMA + Interrupt Flow.png
+│   ├── Memory System.png
+│   ├── RISC-V CPU Pipeline.png
+│   └── architecture_overview.png
 │
 ├── memory/
 │   ├── program.mem
@@ -386,20 +402,24 @@ Tiny-RISC-V-SoC/
 │   └── Interrupt_controller.v
 │
 ├── testbench/
-│   ├── tb_all_peripherals.sv
-│   ├── CPU verification
-│   ├── AXI verification
-│   ├── SDRAM verification
-│   ├── DMA verification
-│   └── peripheral verification
+│   └── verification testbenches
 │
 ├── waveforms/
-│   ├── all_peripherals_verification.jpeg
-│   └── simulation waveform evidence
+│   ├── 01_cpu_bringup_pass.png
+│   ├── 02_axi4_lite_verification.png
+│   ├── 03_soc_system_waveform.png
+│   ├── 04_gpio_verification.png
+│   ├── 05_uart_verification.png
+│   ├── 06_spi_verification.png
+│   ├── 07_i2c_verification.png
+│   ├── 08_dma_verification.png
+│   ├── 09_dma_cache_integration.png
+│   ├── 10_interrupt_verification.png
+│   ├── 11_sdram_verification.png
+│   ├── 12_final_soc_verification.png
+│   └── all_peripherals_verification.png
 │
 ├── report/
-│   └── project report
-│
 ├── .gitignore
 ├── LICENSE
 └── README.md
@@ -447,6 +467,8 @@ Tests Passed : 10 / 10
 SYSTEM VERIFICATION : PASS
 ```
 
+![Final SoC Verification](waveforms/12_final_soc_verification.png)
+
 ### Combined Peripheral Verification
 
 A consolidated peripheral testbench verifies all major peripherals together:
@@ -465,23 +487,27 @@ Peripheral Tests Passed : 7 / 7
 ALL PERIPHERALS VERIFICATION : PASS
 ```
 
-![Combined Peripheral Verification](waveforms/all_peripherals_verification.jpeg)
+![All Peripheral Verification](waveforms/all_peripherals_verification.png)
 
-### Waveform Verification
+### Verification Evidence
 
-The simulation waveforms demonstrate:
+The repository contains individual verification evidence for:
 
-- Clock and reset behavior
-- AXI write/read handshaking
-- Address decoding
-- GPIO write activity
-- Timer access
-- UART access
-- SPI access
-- I²C access
-- DMA read/write activity
-- DMA completion
-- Interrupt activity
+```text
+CPU Bring-Up
+AXI4-Lite
+Complete SoC
+GPIO
+UART
+SPI
+I²C
+DMA
+DMA + Cache
+Interrupt Controller
+SDRAM
+Final SoC Verification
+Combined Peripheral Verification
+```
 
 ---
 
