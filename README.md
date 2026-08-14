@@ -41,7 +41,7 @@ The complete design was functionally verified using self-checking simulation tes
 
 ## 🏗️ Architecture Overview
 
-![SoC Architecture](diagrams/soc_architecture.png)
+![SoC Architecture](diagrams/architecture_overview.png)
 
 The main system path is:
 
@@ -80,7 +80,7 @@ The main system path is:
 
 ## 🧩 CPU Subsystem
 
-![CPU Pipeline](diagrams/cpu_pipeline.png)
+![CPU Pipeline](diagrams/risc-v_cpu_pipeline.png)
 
 The CPU is a **5-stage RV32IM RISC-V processor**.
 
@@ -141,7 +141,7 @@ DMA-cache integration was also functionally verified for destination data integr
 
 ## 🔗 AXI4-Lite Interconnect
 
-![AXI Interconnect](diagrams/axi_interconnect.png)
+![AXI Interconnect](diagrams/axi4-lite_interconnect.png)
 
 The AXI4-Lite interconnect is the communication backbone of the SoC.
 
@@ -217,7 +217,7 @@ SDRAM TEST : PASS
 
 ## 🔌 Peripherals
 
-![Peripherals](diagrams/peripherals.png)
+![Peripherals](waveforms/all_peripherals_verification.png)
 
 The SoC provides several memory-mapped peripherals.
 
@@ -266,7 +266,7 @@ SCL
 
 ## 🚚 DMA Controller
 
-![DMA Controller](diagrams/dma.png)
+![DMA Controller](waveforms/08_dma_verification.png)
 
 The DMA controller allows data movement with reduced CPU involvement.
 
@@ -296,7 +296,7 @@ The DMA-cache integration test also verifies transferred data at the destination
 
 ## 🔔 Interrupt Controller
 
-![Interrupt Controller](diagrams/interrupt_controller.png)
+![Interrupt Controller](waveforms/10_interrupt_controller.png)
 
 The interrupt controller manages hardware-generated interrupt requests.
 
